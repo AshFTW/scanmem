@@ -351,13 +351,13 @@ DEFINE_ANYTYPE_ROUTINE(RANGE, _REVENDIAN)
 
 extern inline unsigned int scan_routine_VLT_ANY SCAN_ROUTINE_ARGUMENTS
 {
-    return *saveflags = MIN(memlength, (uint16_t)(-1));
+   return *saveflags = MIN(memlength, (uint16_t)(-1));
 }
 
 extern inline unsigned int scan_routine_VLT_UPDATE SCAN_ROUTINE_ARGUMENTS
 {
     /* memlength here is already MIN(memlength, old_value->flags.length) */
-    return *saveflags = memlength;
+   return *saveflags = memlength;
 }
 
 /*---------------*/
@@ -376,7 +376,7 @@ extern inline unsigned int scan_routine_BYTEARRAY_EQUALTO SCAN_ROUTINE_ARGUMENTS
         /* not matched */
         return 0;
     }
-    
+
     unsigned int i, j;
     for(i = sizeof(uint64_t); i + sizeof(uint64_t) <= length; i += sizeof(uint64_t))
     {
@@ -385,9 +385,9 @@ extern inline unsigned int scan_routine_BYTEARRAY_EQUALTO SCAN_ROUTINE_ARGUMENTS
             /* not matched */
             return 0;
         }
-        
+
     }
-    
+
     /* match bytes left */
     if (i < length)
     {
@@ -400,10 +400,10 @@ extern inline unsigned int scan_routine_BYTEARRAY_EQUALTO SCAN_ROUTINE_ARGUMENTS
             }
         }
     }
-    
+
     /* matched */
     *saveflags = length;
-    
+
     return length;
 }
 
@@ -477,7 +477,7 @@ extern inline unsigned int scan_routine_STRING_EQUALTO SCAN_ROUTINE_ARGUMENTS
         /* not matched */
         return 0;
     }
-    
+
     unsigned int i, j;
     for(i = sizeof(int64_t); i + sizeof(int64_t) <= length; i += sizeof(int64_t))
     {
@@ -487,7 +487,7 @@ extern inline unsigned int scan_routine_STRING_EQUALTO SCAN_ROUTINE_ARGUMENTS
             return 0;
         }
     }
-    
+
     /* match bytes left */
     if (i < length)
     {
@@ -503,7 +503,7 @@ extern inline unsigned int scan_routine_STRING_EQUALTO SCAN_ROUTINE_ARGUMENTS
     
     /* matched */
     *saveflags = length;
-    
+
     return length;
 }
 
@@ -647,15 +647,15 @@ scan_routine_t sm_get_scanroutine(scan_data_type_t dt, scan_match_type_t mt, mat
     CHOOSE_ROUTINE_FOR_ALL_NUMBER_TYPES(MATCHINCREASEDBY, INCREASEDBY)
     CHOOSE_ROUTINE_FOR_ALL_NUMBER_TYPES(MATCHDECREASEDBY, DECREASEDBY)
     CHOOSE_ROUTINE_FOR_ALL_NUMBER_TYPES_AND_ENDIANS(MATCHRANGE, RANGE)
-    
+
     CHOOSE_ROUTINE(BYTEARRAY, VLT, MATCHANY, ANY)
     CHOOSE_ROUTINE(BYTEARRAY, VLT, MATCHUPDATE, UPDATE)
     CHOOSE_ROUTINE_VLT(BYTEARRAY, BYTEARRAY, MATCHEQUALTO, EQUALTO, uflags*8)
-    
+
     CHOOSE_ROUTINE(STRING, VLT, MATCHANY, ANY)
     CHOOSE_ROUTINE(STRING, VLT, MATCHUPDATE, UPDATE)
     CHOOSE_ROUTINE_VLT(STRING, STRING, MATCHEQUALTO, EQUALTO, uflags*8)
-    
+
     return NULL;
 }
 
@@ -663,23 +663,23 @@ scan_routine_t sm_get_scanroutine(scan_data_type_t dt, scan_match_type_t mt, mat
  * listed flags we're sure it's not going to be matched by the scan,
  * so we reject it without even trying */
 static match_flags possible_flags_for_scan_data_type[] = {
-        [ANYNUMBER]  = flags_all,
-        [ANYINTEGER] = flags_integer,
-        [ANYFLOAT]   = flags_float,
-        [INTEGER8]   = flags_i8b,
-        [INTEGER16]  = flags_i16b,
-        [INTEGER32]  = flags_i32b,
-        [INTEGER64]  = flags_i64b,
-        [FLOAT32]    = flag_f32b,
-        [FLOAT64]    = flag_f64b,
-        [BYTEARRAY]  = flags_max,
-        [STRING]     = flags_max
+    [ANYNUMBER]  = flags_all,
+    [ANYINTEGER] = flags_integer,
+    [ANYFLOAT]   = flags_float,
+    [INTEGER8]   = flags_i8b,
+    [INTEGER16]  = flags_i16b,
+    [INTEGER32]  = flags_i32b,
+    [INTEGER64]  = flags_i64b,
+    [FLOAT32]    = flag_f32b,
+    [FLOAT64]    = flag_f64b,
+    [BYTEARRAY]  = flags_max,
+    [STRING]     = flags_max
 };
 
 bool sm_choose_scanroutine(scan_data_type_t dt, scan_match_type_t mt, const uservalue_t* uval, bool reverse_endianness)
 {
     match_flags uflags = uval ? uval->flags : flags_empty;
-    
+
     /* Check scans that need an uservalue */
     if (mt == MATCHEQUALTO     ||
         mt == MATCHNOTEQUALTO  ||
@@ -696,7 +696,7 @@ bool sm_choose_scanroutine(scan_data_type_t dt, scan_match_type_t mt, const user
             return false;
         }
     }
-    
+
     sm_scan_routine = sm_get_scanroutine(dt, mt, uflags, reverse_endianness);
     return (sm_scan_routine != NULL);
 }

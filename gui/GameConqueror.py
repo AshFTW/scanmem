@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-    Game Conqueror: a graphical game cheating tool, using scanmem as its backend
+    Game Conqueror: a graphical game cheating tool, using libscanmem as its backend
     
     Copyright (C) 2009-2011,2013 Wang Lu <coolwanglu(a)gmail.com>
     Copyright (C) 2010 Bryan Cain
@@ -38,9 +38,8 @@ from gi.repository import Gdk
 from gi.repository import GObject
 from gi.repository import GLib
 
-from consts import *
-from hexview import HexView
-from backend import GameConquerorBackend
+from gui.hexview import HexView
+from gui.backend import GameConquerorBackend
 import misc
 
 import locale
@@ -48,8 +47,8 @@ import gettext
 
 # In some locale, ',' is used in float numbers
 locale.setlocale(locale.LC_NUMERIC, 'C')
-locale.bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR);
-gettext.install(GETTEXT_PACKAGE, LOCALEDIR, names=('_'));
+locale.bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR)
+gettext.install(GETTEXT_PACKAGE, LOCALEDIR, names='_')
 
 CLIPBOARD = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 WORK_DIR = os.path.dirname(sys.argv[0])
@@ -71,7 +70,7 @@ MEMORY_TYPES = ['int8', 'uint8',
 
 SEARCH_SCOPE_NAMES = [_('Basic'), _('Normal'), _('Full')]
 
-# convert type names used by scanmem into ours
+# convert type names used by libscanmem into ours
 TYPENAMES_S2G = {'I64':'int64'
                 ,'I64s':'int64'
                 ,'I64u':'uint64'
@@ -88,7 +87,7 @@ TYPENAMES_S2G = {'I64':'int64'
                 ,'F64':'float64'
                 ,'bytearray':'bytearray'
                 ,'string':'string'
-                }   
+                }
 
 # convert our typenames into struct format characters
 TYPENAMES_G2STRUCT = {'int8':'b'
@@ -332,7 +331,7 @@ class GameConqueror():
         self.is_scanning = False
         self.exit_flag = False # currently for data_worker only, other 'threads' may also use this flag
 
-        self.backend = GameConquerorBackend(os.path.join(LIBDIR, 'libscanmem.so.1'))
+        self.backend = GameConquerorBackend(os.path.join(LIBDIR, 'libsm.a'))
         self.check_backend_version()
         self.is_first_scan = True
         GLib.timeout_add(DATA_WORKER_INTERVAL, self.data_worker)
@@ -814,7 +813,7 @@ class GameConqueror():
             return len(misc.encode(value))
         return None
 
-    # parse bytes dumped by scanmem into number, string, etc.
+    # parse bytes dumped by libscanmem into number, string, etc.
     def bytes2value(self, typename, databytes):
         if databytes is None:
             return None
@@ -1175,13 +1174,13 @@ class GameConqueror():
 
     def check_backend_version(self):
         if self.backend.get_version() != VERSION:
-            self.show_error(_('Version of scanmem mismatched, you may encounter problems. Please make sure you are using the same version of GameConqueror as scanmem.'))
+            self.show_error(_('Version of libscanmem mismatched, you may encounter problems. Please make sure you are using the same version of GameConqueror as libscanmem.'))
 
 
 if __name__ == '__main__':
     # Parse cmdline arguments
     parser = argparse.ArgumentParser(prog='GameConqueror',
-                                     description=_("A GUI for scanmem, a game hacking tool"),
+                                     description=_("A GUI for libscanmem, a game hacking tool"),
                                      epilog=_('Report bugs to ' + PACKAGE_BUGREPORT + '.'))
     parser.add_argument('-s', '--search', metavar='val', dest='search_value',
                         help=_('prefill the search box'))

@@ -33,7 +33,7 @@
 #include <errno.h>
 #include <inttypes.h> /* for fixed-width formatters */
 
-#include "value.hh"
+#include "value.h"
 #include "show_message.h"
 
 void valtostr(const value_t *val, char *str, size_t n)
@@ -48,19 +48,19 @@ void valtostr(const value_t *val, char *str, size_t n)
     
     /* set the flags */
     np = snprintf(buf, sizeof(buf), "[%s%s%s%s%s%s]",
-                  FLAG_MACRO(64, "I64"),
-                  FLAG_MACRO(32, "I32"),
-                  FLAG_MACRO(16, "I16"),
-                  FLAG_MACRO(8,  "I8"),
-                  (val->flags & flag_f64b) ? "F64 " : "",
-                  (val->flags & flag_f32b) ? "F32 " : "");
+         FLAG_MACRO(64, "I64"),
+         FLAG_MACRO(32, "I32"),
+         FLAG_MACRO(16, "I16"),
+         FLAG_MACRO(8,  "I8"),
+         (val->flags & flag_f64b) ? "F64 " : "",
+         (val->flags & flag_f32b) ? "F32 " : "");
     /* handle having no type at all */
     if (np <= 2) {
         show_debug("BUG: No type\n");
         goto err;
     }
-    
-    if (val->flags & flag_u64b) np = snprintf(str, n, "%" PRIu64 ", %s", get_u64b(val), buf);
+
+         if (val->flags & flag_u64b) np = snprintf(str, n, "%" PRIu64 ", %s", get_u64b(val), buf);
     else if (val->flags & flag_s64b) np = snprintf(str, n, "%" PRId64 ", %s", get_s64b(val), buf);
     else if (val->flags & flag_u32b) np = snprintf(str, n, "%" PRIu32 ", %s", get_u32b(val), buf);
     else if (val->flags & flag_s32b) np = snprintf(str, n, "%" PRId32 ", %s", get_s32b(val), buf);
@@ -76,7 +76,7 @@ void valtostr(const value_t *val, char *str, size_t n)
     }
     if (np <= 0 || np >= (n - 1))
         goto err;
-    
+
     return;
 err:
     /* always print a value and a type to not crash front-ends */
@@ -94,21 +94,21 @@ void uservalue2value(value_t *dst, const uservalue_t *src)
 {
     /* Zero whole value union, in case high bytes won't be set */
     dst->uint64_value = 0;
-    
-    if (dst->flags & flag_f64b) set_f64b(dst, get_f64b(src));
+
+         if (dst->flags & flag_f64b) set_f64b(dst, get_f64b(src));
     else if (dst->flags & flag_u64b) set_u64b(dst, get_u64b(src));
     else if (dst->flags & flag_s64b) set_s64b(dst, get_s64b(src));
-    
+
     else if (dst->flags & flag_f32b) set_f32b(dst, get_f32b(src));
     else if (dst->flags & flag_u32b) set_u32b(dst, get_u32b(src));
     else if (dst->flags & flag_s32b) set_s32b(dst, get_s32b(src));
-    
+
     else if (dst->flags & flag_u16b) set_u16b(dst, get_u16b(src));
     else if (dst->flags & flag_s16b) set_s16b(dst, get_s16b(src));
-    
+
     else if (dst->flags & flag_u8b)  set_u8b (dst, get_u8b(src));
     else if (dst->flags & flag_s8b)  set_s8b (dst, get_s8b(src));
-    
+
     else assert(false);
 }
 
@@ -118,16 +118,16 @@ bool parse_uservalue_bytearray(char *const *argv, unsigned argc, uservalue_t *va
     int i,j;
     uint8_t *bytes_array = malloc(argc*sizeof(uint8_t));
     wildcard_t *wildcards_array = malloc(argc*sizeof(wildcard_t));
-    
+
     if (bytes_array == NULL || wildcards_array == NULL)
     {
         show_error("memory allocation for bytearray failed.\n");
         goto err;
     }
-    
+
     const char *cur_str;
     char *endptr;
-    
+
     for(i = 0; i < argc; ++i)
     {
         /* get current string */
@@ -136,7 +136,7 @@ bool parse_uservalue_bytearray(char *const *argv, unsigned argc, uservalue_t *va
         for(j = 0; (j < 3) && (cur_str[j]); ++j) {}
         if (j != 2) /* length is not 2 */
             goto err;
-        
+
         if (strcmp(cur_str, "??") == 0)
         {
             wildcards_array[i] = WILDCARD;
@@ -148,12 +148,12 @@ bool parse_uservalue_bytearray(char *const *argv, unsigned argc, uservalue_t *va
             uint8_t cur_byte = (uint8_t)strtoul(cur_str, &endptr, 16);
             if (*endptr != '\0')
                 goto err;
-            
+
             wildcards_array[i] = FIXED;
             bytes_array[i] = cur_byte;
         }
     }
-    
+
     /* everything is ok */
     val->bytearray_value = bytes_array;
     val->wildcard_value = wildcards_array;
@@ -195,7 +195,7 @@ bool parse_uservalue_number(const char *nptr, uservalue_t * val)
         if (num >= INT64_MIN && num <=  INT64_MAX) { val->flags |= flag_s64b; set_s64b(val,  (int64_t)num); }
         return true;
     }
-    
+
     return false;
 }
 
@@ -206,29 +206,29 @@ bool parse_uservalue_int(const char *nptr, uservalue_t * val)
     uint64_t unum;
     bool valid_uint;
     char *endptr;
-    
+
     assert(nptr != NULL);
     assert(val != NULL);
-    
+
     zero_uservalue(val);
-    
+
     /* skip past any whitespace */
     while (isspace(*nptr))
         ++nptr;
-    
+
     /* parse it as signed int */
     errno = 0;
     snum = strtoll(nptr, &endptr, 0);
     valid_sint = (errno == 0) && (*endptr == '\0');
-    
+
     /* parse it as unsigned int */
     errno = 0;
     unum = strtoull(nptr, &endptr, 0);
     valid_uint = (*nptr != '-') && (errno == 0) && (*endptr == '\0');
-    
+
     if (!valid_sint && !valid_uint)
         return false;
-    
+
     /* determine correct flags */
     if (valid_uint &&                      unum <=  UINT8_MAX) { val->flags |= flag_u8b;  set_u8b(val,   (uint8_t)unum); }
     if (valid_sint && snum >=  INT8_MIN && snum <=   INT8_MAX) { val->flags |= flag_s8b;  set_s8b(val,    (int8_t)snum); }
@@ -238,7 +238,7 @@ bool parse_uservalue_int(const char *nptr, uservalue_t * val)
     if (valid_sint && snum >= INT32_MIN && snum <=  INT32_MAX) { val->flags |= flag_s32b; set_s32b(val,  (int32_t)snum); }
     if (valid_uint &&                      unum <= UINT64_MAX) { val->flags |= flag_u64b; set_u64b(val, (uint64_t)unum); }
     if (valid_sint && snum >= INT64_MIN && snum <=  INT64_MAX) { val->flags |= flag_s64b; set_s64b(val,  (int64_t)snum); }
-    
+
     return true;
 }
 
@@ -248,11 +248,11 @@ bool parse_uservalue_float(const char *nptr, uservalue_t * val)
     char *endptr;
     assert(nptr);
     assert(val);
-    
+
     zero_uservalue(val);
     while (isspace(*nptr))
         ++nptr;
-    
+
     errno = 0;
     num = strtod(nptr, &endptr);
     if ((errno != 0) || (*endptr != '\0'))
@@ -261,7 +261,7 @@ bool parse_uservalue_float(const char *nptr, uservalue_t * val)
     /* I'm not sure how to distinguish between float and double, but I guess it's not necessary here */
     val->flags |= flags_float;
     val->float32_value = (float) num;
-    val->float64_value =  num;
+    val->float64_value =  num;   
     return true;
 }
 

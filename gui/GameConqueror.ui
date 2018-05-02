@@ -26,7 +26,7 @@ along with GameConqueror.  If not, see <http://www.gnu.org/licenses/>.
   <requires lib="gtk+" version="3.2"/>
   <!-- interface-license-type gplv3 -->
   <!-- interface-name GameConqueror -->
-  <!-- interface-description A graphical frontend of scanmem -->
+  <!-- interface-description A graphical frontend of libscanmem -->
   <object class="GtkAdjustment" id="Length_SpinButton_Adjustment">
     <property name="lower">1</property>
     <property name="upper">1024</property>

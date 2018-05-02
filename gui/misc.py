@@ -26,7 +26,7 @@ from gi.repository import Gtk
 PY3K = sys.version_info >= (3, 0)
 
 # check command syntax, data range etc.
-# return a valid scanmem command
+# return a valid libscanmem command
 # raise if something is invalid
 def check_scan_command (data_type, cmd, is_first_scan):
     if cmd == '':
