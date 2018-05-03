@@ -527,7 +527,6 @@ bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const userv
     }
     
     writing_swath_index = vars->matches->swaths;
-    
     writing_swath_index->first_byte_in_child = NULL;
     writing_swath_index->number_of_bytes = 0;
     

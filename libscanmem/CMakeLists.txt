@@ -19,7 +19,7 @@ add_library(libscanmem
         scanroutines.h  scanroutines.c
         sets.h          sets.c
         show_message.h  show_message.c
-        targetmem.h     targetmem.c
+        targetmem.h
         value.h         value.c
         )
 
