@@ -227,10 +227,10 @@ bool handler__set(globals_t * vars, char **argv, unsigned argc)
                 }
 
                 foreach_set_fw(i, &match_set) {
-                    loc = nth_match(vars->matches, match_set.buf[i]);
+                    loc = matches__nth_match(vars->matches, match_set.buf[i]);
                     if (loc.swath) {
                         value_t v;
-                        void *address = remote_address_of_nth_element(loc.swath, loc.index);
+                        void *address = swath__remote_address_of_nth_element(loc.swath, loc.index);
 
                         v = data_to_val(loc.swath, loc.index);
                         /* copy userval onto v */
@@ -254,16 +254,16 @@ bool handler__set(globals_t * vars, char **argv, unsigned argc)
                 }
                 set_cleanup(&match_set);
             } else {
-                matches_and_old_values_swath *reading_swath_index = vars->matches->swaths;
+                swath_t *reading_swath_index = vars->matches->swaths;
                 size_t reading_iterator = 0;
 
                 /* user wants to set all matches */
                 while (reading_swath_index->first_byte_in_child) {
 
                     /* only actual matches are considered */
-                    if (reading_swath_index->data[reading_iterator].match_info != flags_empty)
+                    if (reading_swath_index->data[reading_iterator].flags != flags_empty)
                     {
-                        void *address = remote_address_of_nth_element(reading_swath_index, reading_iterator);
+                        void *address = swath__remote_address_of_nth_element(reading_swath_index, reading_iterator);
                         value_t v;
 
                         v = data_to_val(reading_swath_index, reading_iterator);
@@ -283,7 +283,7 @@ bool handler__set(globals_t * vars, char **argv, unsigned argc)
                     ++reading_iterator;
                     if (reading_iterator >= reading_swath_index->number_of_bytes)
                     {
-                        reading_swath_index = local_address_beyond_last_element(reading_swath_index);
+                        reading_swath_index = swath__local_address_beyond_last_element(reading_swath_index);
                         reading_iterator = 0;
                     }
                 }
@@ -345,7 +345,7 @@ bool handler__list(globals_t *vars, char **argv, unsigned argc)
     if (vars->regions)
         np = vars->regions->head;
 
-    matches_and_old_values_swath *reading_swath_index = vars->matches->swaths;
+    swath_t *reading_swath_index = vars->matches->swaths;
     size_t reading_iterator = 0;
 
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
@@ -365,7 +365,7 @@ bool handler__list(globals_t *vars, char **argv, unsigned argc)
             break;
         }
 
-        match_flags flags = reading_swath_index->data[reading_iterator].match_info;
+        match_flags flags = reading_swath_index->data[reading_iterator].flags;
 
         /* only actual matches are considered */
         if (flags != flags_empty)
@@ -405,7 +405,7 @@ bool handler__list(globals_t *vars, char **argv, unsigned argc)
                 break;
             }
 
-            void *address = remote_address_of_nth_element(reading_swath_index, reading_iterator);
+            void *address = swath__remote_address_of_nth_element(reading_swath_index, reading_iterator);
             unsigned long address_ul = (unsigned long)address;
             unsigned int region_id = 99;
             unsigned long match_off = 0;
@@ -433,7 +433,7 @@ bool handler__list(globals_t *vars, char **argv, unsigned argc)
         ++reading_iterator;
         if (reading_iterator >= reading_swath_index->number_of_bytes)
         {
-            reading_swath_index = local_address_beyond_last_element(reading_swath_index);
+            reading_swath_index = swath__local_address_beyond_last_element(reading_swath_index);
             reading_iterator = 0;
         }
     }
@@ -469,19 +469,19 @@ bool handler__delete(globals_t * vars, char **argv, unsigned argc)
     size_t match_counter = 0;
     size_t set_idx = 0;
 
-    matches_and_old_values_swath *reading_swath_index = vars->matches->swaths;
+    swath_t *reading_swath_index = vars->matches->swaths;
 
     size_t reading_iterator = 0;
 
     while (reading_swath_index->first_byte_in_child) {
         /* only actual matches are considered */
-        if (reading_swath_index->data[reading_iterator].match_info != flags_empty) {
+        if (reading_swath_index->data[reading_iterator].flags != flags_empty) {
 
             if (match_counter++ == del_set.buf[set_idx]) {
                 /* It is not reasonable to check if the matches array can be
                  * downsized after the deletion.
                  * So just zero its flags, to mark it as not a REAL match */
-                reading_swath_index->data[reading_iterator].match_info = flags_empty;
+                reading_swath_index->data[reading_iterator].flags = flags_empty;
                 vars->num_matches--;
 
                 if (set_idx++ == del_set.size - 1) {
@@ -495,7 +495,7 @@ bool handler__delete(globals_t * vars, char **argv, unsigned argc)
         ++reading_iterator;
         if (reading_iterator >= reading_swath_index->number_of_bytes) {
             reading_swath_index =
-                local_address_beyond_last_element(reading_swath_index);
+                    swath__local_address_beyond_last_element(reading_swath_index);
 
             reading_iterator = 0;
         }
@@ -644,8 +644,8 @@ bool handler__dregion(globals_t *vars, char **argv, unsigned argc)
 
             void *start_address = reg_to_delete->start;
             void *end_address = reg_to_delete->start + reg_to_delete->size;
-            vars->matches = delete_in_address_range(vars->matches, &vars->num_matches,
-                                                    start_address, end_address);
+            vars->matches = matches__delete_in_address_range(vars->matches, &vars->num_matches,
+                                                             start_address, end_address);
             if (vars->matches == NULL)
             {
                 show_error("memory allocation error while deleting matches\n");
@@ -1165,7 +1165,7 @@ bool handler__watch(globals_t * vars, char **argv, unsigned argc)
         return false;
     }
     
-    loc = nth_match(vars->matches, id);
+    loc = matches__nth_match(vars->matches, id);
 
     /* check that this is a valid match-id */
     if (!loc.swath) {
@@ -1174,7 +1174,7 @@ bool handler__watch(globals_t * vars, char **argv, unsigned argc)
         return false;
     }
     
-    address = remote_address_of_nth_element(loc.swath, loc.index);
+    address = swath__remote_address_of_nth_element(loc.swath, loc.index);
     
     val = data_to_val(loc.swath, loc.index);
 

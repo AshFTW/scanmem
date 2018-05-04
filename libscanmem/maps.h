@@ -26,6 +26,7 @@
 #define MAPS_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <sys/types.h>
 
 #include "list.h"
@@ -50,7 +51,7 @@ extern const char *region_type_names[];
 
 /* a region obtained from /proc/pid/maps, these are searched for matches */
 typedef struct {
-    void *start;             /* Start address. Hack: If HAVE_PROCMEM is defined, this is actually an (unsigned long) offset into /proc/{pid}/mem */
+    uintptr_t start;             /* Start address. Hack: If HAVE_PROCMEM is defined, this is actually an (unsigned long) offset into /proc/{pid}/mem */
     unsigned long size;              /* size */
     region_type_t type;
     unsigned long load_addr;         /* e.g. load address of the executable */

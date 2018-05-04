@@ -83,7 +83,7 @@
 static struct {
     uint8_t cache[MAX_PEEKBUF_SIZE];  /* read from ptrace()  */
     unsigned size;              /* amount of valid memory stored (in bytes) */
-    const char *base;           /* base address of cached region */
+    uintptr_t base;           /* base address of cached region */
 #if HAVE_PROCMEM
     int procmem_fd;             /* file descriptor of the opened `/proc/<pid>/mem` file */
 #else
@@ -154,14 +154,16 @@ bool sm_detach(pid_t target)
  * using either `ptrace` or `pread` on `/proc/pid/mem`.
  * The target process is not passed, but read from the static peekbuf.
  * `sm_attach()` MUST be called before this function. */
-static inline size_t readmemory(uint8_t *dest_buffer, const char *target_address, size_t size)
+static inline size_t readmemory(uint8_t *dest_buffer, const uintptr_t target_address, size_t size)
 {
     size_t nread = 0;
 
 #if HAVE_PROCMEM
     do {
-        ssize_t ret = pread(peekbuf.procmem_fd, dest_buffer + nread,
-                            size - nread, (unsigned long)(target_address + nread));
+        ssize_t ret = pread(peekbuf.procmem_fd,
+                            dest_buffer + nread,
+                            size - nread,
+                            target_address + nread);
         if (ret == -1) {
             /* we can't read further, report what was read */
             return nread;
@@ -219,11 +221,11 @@ static inline size_t readmemory(uint8_t *dest_buffer, const char *target_address
  * `sm_attach()` MUST be called before this function.
  */
 
-extern inline bool sm_peekdata(const void *addr, uint16_t length, const mem64_t **result_ptr, size_t *memlength)
+extern inline bool sm_peekdata(const uintptr_t addr, uint16_t length, const mem64_t **result_ptr, size_t *memlength)
 {
-    const char *reqaddr = addr;
+    const uintptr_t reqaddr = addr;
     unsigned int i;
-    unsigned int missing_bytes;
+    uintptr_t missing_bytes;
 
     assert(peekbuf.size <= MAX_PEEKBUF_SIZE);
     assert(result_ptr != NULL);
@@ -253,7 +255,7 @@ extern inline bool sm_peekdata(const void *addr, uint16_t length, const mem64_t 
         /* head shift if necessary */
         if (peekbuf.size + missing_bytes > MAX_PEEKBUF_SIZE)
         {
-            unsigned int shift_size = reqaddr - peekbuf.base;
+            uintptr_t shift_size = reqaddr - peekbuf.base;
             shift_size = PEEKDATA_CHUNK * (shift_size / PEEKDATA_CHUNK);
 
             memmove(peekbuf.cache, &peekbuf.cache[shift_size], peekbuf.size-shift_size);
@@ -272,7 +274,7 @@ extern inline bool sm_peekdata(const void *addr, uint16_t length, const mem64_t 
     /* we need to retrieve memory to complete the request */
     for (i = 0; i < missing_bytes; i += PEEKDATA_CHUNK)
     {
-        const char *target_address = peekbuf.base + peekbuf.size;
+        const uintptr_t target_address = peekbuf.base + peekbuf.size;
         size_t len = readmemory(&peekbuf.cache[peekbuf.size], target_address, PEEKDATA_CHUNK);
 
         /* check if the read succeeded */
@@ -304,7 +306,7 @@ static inline void print_a_dot(void)
     fflush(stderr);
 }
 
-static inline uint16_t flags_to_memlength(scan_data_type_t scan_data_type, match_flags flags)
+static inline uint16_t flags_to_memlength(scan_data_type_t scan_data_type, uint16_t flags)
 {
     switch(scan_data_type)
     {
@@ -328,12 +330,12 @@ bool sm_checkmatches(globals_t *vars,
                      scan_match_type_t match_type,
                      const uservalue_t *uservalue)
 {
-    matches_and_old_values_swath *reading_swath_index = vars->matches->swaths;
-    matches_and_old_values_swath reading_swath = *reading_swath_index;
+    swath_t *reading_swath_index = vars->matches->swaths;
+    swath_t reading_swath = *reading_swath_index;
 
     unsigned long bytes_scanned = 0;
     unsigned long total_scan_bytes = 0;
-    matches_and_old_values_swath *tmp_swath_index = reading_swath_index;
+    swath_t *tmp_swath_index = reading_swath_index;
     unsigned int samples_remaining = NUM_SAMPLES;
     unsigned int samples_to_dot = SAMPLES_PER_DOT;
     size_t bytes_at_next_sample;
@@ -350,7 +352,7 @@ bool sm_checkmatches(globals_t *vars,
     while(tmp_swath_index->number_of_bytes)
     {
         total_scan_bytes += tmp_swath_index->number_of_bytes;
-        tmp_swath_index = (matches_and_old_values_swath *)(&tmp_swath_index->data[tmp_swath_index->number_of_bytes]);
+        tmp_swath_index = (swath_t *)(&tmp_swath_index->data[tmp_swath_index->number_of_bytes]);
     }
     bytes_per_sample = total_scan_bytes / NUM_SAMPLES;
     bytes_at_next_sample = bytes_per_sample;
@@ -358,8 +360,8 @@ bool sm_checkmatches(globals_t *vars,
     print_a_dot();
 
     size_t reading_iterator = 0;
-    matches_and_old_values_swath *writing_swath_index = vars->matches->swaths;
-    writing_swath_index->first_byte_in_child = NULL;
+    swath_t *writing_swath_index = vars->matches->swaths;
+    writing_swath_index->first_byte_in_child = 0;
     writing_swath_index->number_of_bytes = 0;
 
     int required_extra_bytes_to_record = 0;
@@ -377,14 +379,14 @@ bool sm_checkmatches(globals_t *vars,
         unsigned int match_length = 0;
         const mem64_t *memory_ptr;
         size_t memlength;
-        match_flags checkflags;
+        uint16_t checkflags;
 
-        match_flags old_flags = reading_swath_index->data[reading_iterator].match_info;
+        uint16_t old_flags = reading_swath_index->data[reading_iterator].flags;
         uint old_length = flags_to_memlength(vars->options.scan_data_type, old_flags);
-        void *address = reading_swath.first_byte_in_child + reading_iterator;
+        uintptr_t address = reading_swath.first_byte_in_child + reading_iterator;
 
         /* read value from this address */
-        if (UNLIKELY(sm_peekdata(address, old_length, &memory_ptr, &memlength) == false))
+        if (UNLIKELY(sm_peekdata((void *) address, old_length, &memory_ptr, &memlength) == false))
         {
             /* If we can't look at the data here, just abort the whole recording, something bad happened */
             required_extra_bytes_to_record = 0;
@@ -409,8 +411,8 @@ bool sm_checkmatches(globals_t *vars,
                - We can get away with assuming that the pointers will stay valid,
                  because as we never add more data to the array than there was before, it will not reallocate. */
 
-            writing_swath_index = add_element(&(vars->matches), writing_swath_index, address,
-                                              get_u8b(memory_ptr), checkflags);
+            writing_swath_index = matches__add_element(&(vars->matches), writing_swath_index, address,
+                                                       get_u8b(memory_ptr), checkflags);
 
             ++vars->num_matches;
 
@@ -418,8 +420,8 @@ bool sm_checkmatches(globals_t *vars,
         }
         else if (required_extra_bytes_to_record)
         {
-            writing_swath_index = add_element(&(vars->matches), writing_swath_index, address,
-                                              get_u8b(memory_ptr), flags_empty);
+            writing_swath_index = matches__add_element(&(vars->matches), writing_swath_index, address,
+                                                       get_u8b(memory_ptr), flags_empty);
             --required_extra_bytes_to_record;
         }
 
@@ -447,7 +449,7 @@ bool sm_checkmatches(globals_t *vars,
         ++reading_iterator;
         if (reading_iterator >= reading_swath.number_of_bytes)
         {
-            reading_swath_index = (matches_and_old_values_swath *)
+            reading_swath_index = (swath_t *)
                 (&reading_swath_index->data[reading_swath.number_of_bytes]);
             reading_swath = *reading_swath_index;
             reading_iterator = 0;
@@ -457,7 +459,7 @@ bool sm_checkmatches(globals_t *vars,
 
     ENDINTERRUPTABLE();
 
-    if (!(vars->matches = null_terminate(vars->matches, writing_swath_index)))
+    if (!(vars->matches = matches__null_terminate(vars->matches, writing_swath_index)))
     {
         show_error("memory allocation error while reducing matches-array size\n");
         return false;
@@ -478,7 +480,7 @@ bool sm_checkmatches(globals_t *vars,
 /* sm_searchregions() performs an initial search of the process for values matching `uservalue` */
 bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const uservalue_t *uservalue)
 {
-    matches_and_old_values_swath *writing_swath_index;
+    swath_t *writing_swath_index;
     int required_extra_bytes_to_record = 0;
     unsigned long total_size = 0;
     unsigned regnum = 0;
@@ -509,25 +511,25 @@ bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const userv
 
     INTERRUPTABLESCAN();
     
-    total_size = sizeof(matches_and_old_values_array);
+    total_size = sizeof(matches_t);
 
     while (n) {
-        total_size += ((region_t *)(n->data))->size * sizeof(old_value_and_match_info) + sizeof(matches_and_old_values_swath);
+        total_size += ((region_t *)(n->data))->size * sizeof(old_value_and_match_info) + sizeof(swath_t);
         n = n->next;
     }
     
-    total_size += sizeof(matches_and_old_values_swath); /* for null terminate */
+    total_size += sizeof(swath_t); /* for null terminate */
     
     show_debug("allocate array, max size %ld\n", total_size);
 
-    if (!(vars->matches = allocate_array(vars->matches, total_size)))
+    if (!(vars->matches = matches__allocate_array(vars->matches, total_size)))
     {
         show_error("could not allocate match array\n");
         return false;
     }
     
     writing_swath_index = vars->matches->swaths;
-    writing_swath_index->first_byte_in_child = NULL;
+    writing_swath_index->first_byte_in_child = 0;
     writing_swath_index->number_of_bytes = 0;
     
     /* get total number of bytes */
@@ -566,13 +568,13 @@ bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const userv
 
         /* print a progress meter so user knows we haven't crashed */
         show_user("%02u/%02u searching %#10lx - %#10lx", ++regnum,
-                vars->regions->size, (unsigned long)r->start, (unsigned long)r->start + r->size);
+                vars->regions->size, r->start, r->start + r->size);
         fflush(stderr);
     
         /* For every offset, check if we have a match. */
         size_t memlength = r->size;
         size_t buffer_size = 0;
-        void *reg_pos = r->start;
+        uintptr_t reg_pos = r->start;
         const uint8_t *buf_pos = NULL;
         for ( ; ; memlength--, buffer_size--, reg_pos++, buf_pos++) {
             /* check if the buffer is finished (or we just started) */
@@ -608,7 +610,7 @@ bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const userv
 
             const mem64_t* memory_ptr = (mem64_t*)buf_pos;
             unsigned int match_length;
-            match_flags checkflags;
+            uint16_t checkflags;
 
             /* initialize checkflags */
             checkflags = flags_empty;
@@ -618,8 +620,11 @@ bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const userv
             if (UNLIKELY(match_length > 0))
             {
                 assert(match_length <= memlength);
-                writing_swath_index = add_element(&(vars->matches), writing_swath_index, reg_pos,
-                                                  get_u8b(memory_ptr), checkflags);
+                writing_swath_index = matches__add_element(&vars->matches,
+                                                           writing_swath_index,
+                                                           reg_pos,
+                                                           get_u8b(memory_ptr),
+                                                           checkflags);
                 
                 ++vars->num_matches;
                 
@@ -627,8 +632,11 @@ bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const userv
             }
             else if (required_extra_bytes_to_record)
             {
-                writing_swath_index = add_element(&(vars->matches), writing_swath_index, reg_pos,
-                                                  get_u8b(memory_ptr), flags_empty);
+                writing_swath_index = matches__add_element(&vars->matches,
+                                                           writing_swath_index,
+                                                           reg_pos,
+                                                           get_u8b(memory_ptr),
+                                                           flags_empty);
                 --required_extra_bytes_to_record;
             }
         }
@@ -649,7 +657,7 @@ bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const userv
     /* tell front-end we've finished */
     vars->scan_progress = MAX_PROGRESS;
     
-    if (!(vars->matches = null_terminate(vars->matches, writing_swath_index)))
+    if (!(vars->matches = matches__null_terminate(vars->matches, writing_swath_index)))
     {
         show_error("memory allocation error while reducing matches-array size\n");
         return false;
@@ -662,7 +670,7 @@ bool sm_searchregions(globals_t *vars, scan_match_type_t match_type, const userv
 }
 
 /* Needs to support only ANYNUMBER types */
-bool sm_setaddr(pid_t target, void *addr, const value_t *to)
+bool sm_setaddr(pid_t target, uintptr_t addr, const value_t *to)
 {
     unsigned int i;
     uint8_t memarray[sizeof(uint64_t)] = {0};
@@ -700,7 +708,7 @@ bool sm_setaddr(pid_t target, void *addr, const value_t *to)
     return sm_detach(target);
 }
 
-bool sm_read_array(pid_t target, const void *addr, void *buf, size_t len)
+bool sm_read_array(pid_t target, const uintptr_t addr, char *buf, size_t len)
 {
     if (sm_attach(target) == false) {
         return false;
@@ -717,7 +725,7 @@ bool sm_read_array(pid_t target, const void *addr, void *buf, size_t len)
 }
 
 /* TODO: may use /proc/<pid>/mem here */
-bool sm_write_array(pid_t target, void *addr, const void *data, size_t len)
+bool sm_write_array(pid_t target, uintptr_t addr, const char *data, size_t len)
 {
     int i,j;
     long peek_value;

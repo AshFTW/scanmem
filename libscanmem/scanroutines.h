@@ -67,7 +67,7 @@ typedef enum {
  * Returns the number of bytes needed to store said match, 0 for not matched
  */
 typedef unsigned int (*scan_routine_t)(const mem64_t *memory_ptr, size_t memlength,
-                                       const value_t *old_value, const uservalue_t *user_value, match_flags *saveflags);
+                                       const value_t *old_value, const uservalue_t *user_value, uint16_t *saveflags);
 extern scan_routine_t sm_scan_routine;
 
 /* 
@@ -76,6 +76,6 @@ extern scan_routine_t sm_scan_routine;
  */
 bool sm_choose_scanroutine(scan_data_type_t dt, scan_match_type_t mt, const uservalue_t* uval, bool reverse_endianness);
 
-scan_routine_t sm_get_scanroutine(scan_data_type_t dt, scan_match_type_t mt, match_flags uflags, bool reverse_endianness);
+scan_routine_t sm_get_scanroutine(scan_data_type_t dt, scan_match_type_t mt, uint16_t uflags, bool reverse_endianness);
 
 #endif /* SCANROUTINES_H */

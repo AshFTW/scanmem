@@ -30,7 +30,7 @@
 
 
 /* for convenience */
-#define SCAN_ROUTINE_ARGUMENTS (const mem64_t *memory_ptr, size_t memlength, const value_t *old_value, const uservalue_t *user_value, match_flags *saveflags)
+#define SCAN_ROUTINE_ARGUMENTS (const mem64_t *memory_ptr, size_t memlength, const value_t *old_value, const uservalue_t *user_value, uint16_t *saveflags)
 unsigned int (*sm_scan_routine) SCAN_ROUTINE_ARGUMENTS;
 
 #define MEMORY_COMP(value,field,op)  (((value)->flags & flag_##field) && (get_##field(memory_ptr) op get_##field(value)))
@@ -632,7 +632,7 @@ DEFINE_STRING_SMALLOOP_EQUALTO_ROUTINE(56)
     }
 
 
-scan_routine_t sm_get_scanroutine(scan_data_type_t dt, scan_match_type_t mt, match_flags uflags, bool reverse_endianness)
+scan_routine_t sm_get_scanroutine(scan_data_type_t dt, scan_match_type_t mt, uint16_t uflags, bool reverse_endianness)
 {
     CHOOSE_ROUTINE_FOR_ALL_NUMBER_TYPES(MATCHANY, ANY)
     CHOOSE_ROUTINE_FOR_ALL_NUMBER_TYPES(MATCHUPDATE, UPDATE)
@@ -662,7 +662,7 @@ scan_routine_t sm_get_scanroutine(scan_data_type_t dt, scan_match_type_t mt, mat
 /* Possible flags per scan data type: if an incoming uservalue has none of the
  * listed flags we're sure it's not going to be matched by the scan,
  * so we reject it without even trying */
-static match_flags possible_flags_for_scan_data_type[] = {
+static uint16_t possible_flags_for_scan_data_type[] = {
     [ANYNUMBER]  = flags_all,
     [ANYINTEGER] = flags_integer,
     [ANYFLOAT]   = flags_float,
@@ -678,7 +678,7 @@ static match_flags possible_flags_for_scan_data_type[] = {
 
 bool sm_choose_scanroutine(scan_data_type_t dt, scan_match_type_t mt, const uservalue_t* uval, bool reverse_endianness)
 {
-    match_flags uflags = uval ? uval->flags : flags_empty;
+    uint16_t uflags = uval ? uval->flags : flags_empty;
 
     /* Check scans that need an uservalue */
     if (mt == MATCHEQUALTO     ||
@@ -689,7 +689,7 @@ bool sm_choose_scanroutine(scan_data_type_t dt, scan_match_type_t mt, const user
         mt == MATCHINCREASEDBY ||
         mt == MATCHDECREASEDBY)
     {
-        match_flags possible_flags = possible_flags_for_scan_data_type[dt];
+        uint16_t possible_flags = possible_flags_for_scan_data_type[dt];
         if ((possible_flags & uflags) == flags_empty) {
             /* There's no possibility to have a match, just abort */
             sm_scan_routine = NULL;
